@@ -20,7 +20,7 @@ def _feature(locus, start, stop, gene, product, db_xrefs):
 
 
 def annotation_json() -> dict:
-    """A small annotation in the Bakta JSON format (only the fields COCOS reads are meaningful)."""
+    """A small annotation in the Bakta JSON format (only the fields Cocos reads are meaningful)."""
     return {
         "genome": {"genus": "Escherichia", "species": "coli", "strain": "mock"},
         "stats": {"no_sequences": 1, "size": 24},

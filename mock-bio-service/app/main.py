@@ -8,7 +8,7 @@ from .mock_data import (
     invalid_json,
 )
 
-app = FastAPI(title="COCOS Mock Bio Service")
+app = FastAPI(title="Cocos Mock Bio Service")
 
 
 def log(message: str):
