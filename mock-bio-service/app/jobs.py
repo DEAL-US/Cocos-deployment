@@ -1,6 +1,6 @@
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -10,6 +10,7 @@ class MockJob:
     behavior: str
     created_at: float
     duration: float
+    software: list = field(default_factory=list)
 
 
 _jobs: dict[str, MockJob] = {}
@@ -19,6 +20,7 @@ def create_job(
     task_type: str,
     behavior: str,
     duration: float,
+    software: list = (),
 ) -> MockJob:
     job = MockJob(
         job_id=f"mock-{uuid.uuid4().hex[:8]}",
@@ -26,6 +28,7 @@ def create_job(
         behavior=behavior,
         created_at=time.monotonic(),
         duration=duration,
+        software=list(software),
     )
 
     _jobs[job.job_id] = job

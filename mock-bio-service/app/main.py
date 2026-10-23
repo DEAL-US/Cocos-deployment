@@ -3,8 +3,11 @@ from fastapi import FastAPI, HTTPException, Query, Response
 from .config import DEFAULT_DURATION, get_behavior
 from .jobs import create_job, get_job, get_status
 from .mock_data import (
+    ANNOTATION_SOFTWARE,
+    ASSEMBLY_SOFTWARE,
     annotation_json,
     assembly_fasta,
+    assembly_software,
     invalid_json,
 )
 
@@ -20,6 +23,7 @@ def create_mock_job(
     task_type: str,
     behavior: str | None,
     initial_status: str = "pending",
+    software: list = (),
 ):
     try:
         behavior = get_behavior(behavior)
@@ -33,6 +37,7 @@ def create_mock_job(
         task_type=task_type,
         behavior=behavior,
         duration=DEFAULT_DURATION,
+        software=software,
     )
 
     log(
@@ -79,7 +84,14 @@ def job_status(job_id: str):
 
     return {
         "status": status,
+        "software": job.software,
     }
+
+
+@app.get("/tools")
+def tools():
+    """What a new job would use, like GET /tools of the real service."""
+    return {"assembly": ASSEMBLY_SOFTWARE, "annotation": ANNOTATION_SOFTWARE}
 
 
 @app.post("/assembly/ont")
@@ -96,6 +108,7 @@ def assembly_ont(
     return create_mock_job(
         "assembly_ont",
         behavior,
+        software=assembly_software("ont", annotate),
     )
 
 
@@ -113,6 +126,7 @@ def assembly_illumina(
     return create_mock_job(
         "assembly_illumina",
         behavior,
+        software=assembly_software("illumina", annotate),
     )
 
 
@@ -131,6 +145,7 @@ def annotation_bakta_upload(
         "annotation",
         behavior,
         initial_status="running",
+        software=ANNOTATION_SOFTWARE,
     )
 
 
@@ -166,6 +181,7 @@ def annotation_bakta_existing(
         "annotation",
         behavior,
         initial_status="running",
+        software=ANNOTATION_SOFTWARE,
     )
 
 

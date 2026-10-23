@@ -1,3 +1,21 @@
+# The software the real service reports (docker-servicios-bio/versions.py), with the versions it pins
+ASSEMBLY_SOFTWARE = {
+    "illumina": [{"name": "SPAdes", "version": "4.3.0", "type": "tool", "biotools": "spades"}],
+    "ont": [{"name": "Raven", "version": "1.8.3", "type": "tool", "biotools": "raven"}],
+}
+ANNOTATION_SOFTWARE = [
+    {"name": "Bakta", "version": "1.12.1", "type": "tool", "biotools": "bakta"},
+    {"name": "Bakta database", "version": "6.0", "type": "database", "variant": "light",
+     "date": "2025-02-24", "doi": "10.5281/zenodo.14916843"},
+    {"name": "AMRFinderPlus", "version": "4.2.7", "type": "tool", "biotools": "amrfinderplus"},
+    {"name": "AMRFinderPlus database", "version": "2026-08-07.1", "type": "database"},
+]
+
+
+def assembly_software(technology: str, annotate: bool) -> list:
+    return ASSEMBLY_SOFTWARE[technology] + (ANNOTATION_SOFTWARE if annotate else [])
+
+
 def assembly_fasta() -> bytes:
     return b">mock_contig_1\nATCGATCGATCGATCGATCGATCG\n"
 
