@@ -3,6 +3,9 @@
 ### Health Check
 GET {{BASE}}/health
 
+### Installed tools and databases (what a new job would use)
+GET {{BASE}}/tools
+
 ### Illumina Assembly - Upload paired-end reads
 POST {{BASE}}/assembly/illumina?annotate=true
 Content-Type: multipart/form-data; boundary=----boundary

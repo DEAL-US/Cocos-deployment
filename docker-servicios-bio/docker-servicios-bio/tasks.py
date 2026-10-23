@@ -8,8 +8,11 @@ from pathlib import Path
 import subprocess
 import shutil
 import os
+import json
 import traceback
 import logging
+
+from versions import annotation_software, assembly_software
 
 # Import shared utilities
 from utils import (
@@ -78,6 +81,16 @@ celery_app.conf.update(
 
 
 # ============== Helper Functions ==============
+
+def record_software(job_id, entries):
+    """Add the tools and databases a job uses (see versions.py) to its 'software' field, a JSON list.
+    An entry replaces an earlier one with the same name, so a retried job does not repeat it."""
+    if not job_id or not entries:
+        return
+    names = {entry["name"] for entry in entries}
+    current = json.loads(get_redis().hget(f"job:{job_id}", "software") or "[]")
+    update_job(job_id, software=json.dumps([entry for entry in current if entry["name"] not in names] + entries))
+
 
 def which_any(candidates):
     """Find the first available executable from a list of candidates"""
@@ -155,6 +168,7 @@ def perform_illumina_assembly(r1_path: str, r2_path: str, output_dir: Path,
         raise RuntimeError("SPAdes not found in PATH.")
     
     append_job_log(job_id, f"Using SPAdes at: {spades}")
+    record_software(job_id, assembly_software("spades"))
     
     output_dir.mkdir(parents=True, exist_ok=True)
     cmd = [spades, "--threads", str(threads), "--memory", str(memory), "-o", str(output_dir)]
@@ -214,6 +228,7 @@ def perform_ont_assembly(reads_path: str, output_dir: Path, threads: int,
         raise RuntimeError("Flye/Raven not found in PATH.")
     
     append_job_log(job_id, f"Using assembler: {mode} ({exe})")
+    record_software(job_id, assembly_software(mode))
     
     if mode == "flye":
         cmd = ["flye", "--nano-raw", reads_path, "--out-dir", str(output_dir), "--threads", str(threads)]
@@ -259,6 +274,7 @@ def perform_bakta_annotation(contigs_path: str, output_dir: Path, threads: int, 
         raise RuntimeError("Bakta not found in PATH.")
     
     append_job_log(job_id, f"Using Bakta at: {bakta}")
+    record_software(job_id, annotation_software())
     
     output_dir.mkdir(parents=True, exist_ok=True)
     cmd = [

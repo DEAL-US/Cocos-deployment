@@ -11,6 +11,7 @@ import shutil
 from pathlib import Path
 import os
 from typing import Optional
+import json
 import logging
 from datetime import datetime, timezone, timedelta
 
@@ -20,6 +21,8 @@ from tasks import (
     run_annotation_task,
     celery_app
 )
+
+import versions
 
 # Import shared utilities
 from utils import (
@@ -376,11 +379,17 @@ async def annotate_bakta_from_file(
 
 @app.get("/jobs/{job_id}")
 async def get_job_status(job_id: str):
-    """Check job status"""
+    """Check job status, with the tools and databases the job used ('software', see versions.py)"""
     job = get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return job
+    return {**job, "software": json.loads(job.get("software") or "[]")}
+
+
+@app.get("/tools")
+async def get_tools():
+    """The tools and databases installed, by kind of job: what a new job would use (see versions.py)"""
+    return versions.installed()
 
 
 @app.get("/jobs")
@@ -654,6 +663,7 @@ async def root():
             "ont_assembly": "/assembly/ont",
             "list_jobs": "/jobs",
             "job_status": "/jobs/{job_id}",
+            "tools": "/tools",
             "job_logs": "/jobs/{job_id}/logs",
             "retry_job": "/jobs/{job_id}/retry",
             "cancel_job": "/jobs/{job_id}/cancel",
