@@ -1,16 +1,18 @@
-FROM continuumio/miniconda3:latest
+FROM continuumio/miniconda3:26.7.1-1
 
 WORKDIR /app
 
-# Create conda environment and install all dependencies in one layer
-RUN conda create -n bio_env python=3.11 -y && \
+# Create conda environment and install all dependencies in one layer.
+# Versions are pinned so that the image is reproducible: the jobs report them (versions.py), and
+# Bakta 1.12 needs the Bakta database v6 (db-light 6.0).
+RUN conda create -n bio_env python=3.11.17 -y && \
     conda install -n bio_env -c bioconda -c conda-forge \
-    spades raven-assembler bakta biopython \
-    fastapi uvicorn python-multipart gunicorn -y && \
+    spades=4.3.0 raven-assembler=1.8.3 bakta=1.12.1 ncbi-amrfinderplus=4.2.7 biopython=1.88 \
+    fastapi=0.142.2 uvicorn=0.54.0 python-multipart=0.0.32 gunicorn=26.2.0 -y && \
     conda clean -afy
 
 # Install Redis client and Celery via pip
-RUN conda run -n bio_env pip install redis celery flower
+RUN conda run -n bio_env pip install redis==8.1.0 celery==5.6.3 flower==2.2.0
 
 # Make conda environment activate by default
 SHELL ["conda", "run", "-n", "bio_env", "/bin/bash", "-c"]
@@ -27,7 +29,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy application files
-COPY --chown=biouser:biouser app.py tasks.py utils.py gunicorn.conf.py /app/
+COPY --chown=biouser:biouser app.py tasks.py utils.py versions.py gunicorn.conf.py /app/
 
 # Switch to non-root user
 USER biouser
