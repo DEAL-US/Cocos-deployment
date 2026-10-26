@@ -428,7 +428,7 @@ def main():
         else:
             print(
                 "  • Bio Service API: "
-                "http://localhost:8001"
+                "only inside the network (http://bio-assembly-api:8000)"
             )
 
         print(

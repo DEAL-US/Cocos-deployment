@@ -19,8 +19,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    ports:
-      - "8000:8000"
+    # No published ports: the API has no authentication, so only Cocos reaches it, through bio-network
     volumes:
       - ./data/db-light:/data/bakta_db
       - ./data/workdir:/data/workdir
@@ -148,8 +147,9 @@ services:
       - redis
       - celery-worker
       - celery-beat
+    # Flower has no authentication: only reachable from the host itself (e.g. through an SSH tunnel)
     ports:
-      - "5555:5555"
+      - "127.0.0.1:5555:5555"
     environment:
       - REDIS_URL=redis://bio-redis:6379/0
     command: ["conda", "run", "--no-capture-output", "-n", "bio_env",
