@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query, Response
 
 from .config import DEFAULT_DURATION, get_behavior
-from .jobs import create_job, get_job, get_status
+from .jobs import ERROR_KINDS, create_job, get_job, get_status
 from .mock_data import (
     ANNOTATION_SOFTWARE,
     ASSEMBLY_SOFTWARE,
@@ -81,6 +81,14 @@ def job_status(job_id: str):
             status_code=503,
             media_type="application/json",
         )
+
+    if status == "failed":
+        return {
+            "status": status,
+            "message": f"Mock job failed ({job.behavior})",
+            "error_kind": ERROR_KINDS[job.behavior],
+            "software": job.software,
+        }
 
     return {
         "status": status,

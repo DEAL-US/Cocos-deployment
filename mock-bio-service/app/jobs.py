@@ -40,8 +40,12 @@ def get_job(job_id: str) -> MockJob | None:
     return _jobs.get(job_id)
 
 
+# Why a failed job failed, like the error_kind of the real service
+ERROR_KINDS = {"fail": "input", "fail_resources": "resources"}
+
+
 def get_status(job: MockJob) -> str:
-    if job.behavior == "fail":
+    if job.behavior in ERROR_KINDS:
         return "failed"
 
     if job.behavior == "busy":

@@ -6,7 +6,8 @@ DEFAULT_DURATION = float(os.getenv("MOCK_DEFAULT_DURATION", "2"))
 VALID_BEHAVIORS = {
     "success",
     "slow",
-    "fail",
+    "fail",            # a tool failed on the input (error_kind "input")
+    "fail_resources",  # the job ran out of time or memory (error_kind "resources")
     "busy",
     "invalid",
 }
