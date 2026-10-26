@@ -163,7 +163,7 @@ def perform_illumina_assembly(r1_path: str, r2_path: str, output_dir: Path,
     """Perform Illumina assembly using SPAdes"""
     append_job_log(job_id, "Starting Illumina assembly with SPAdes")
     
-    spades = assembler if assembler else which_any(["spades.py", "spades"])
+    spades = which_any(["spades.py", "spades"])
     if not spades:
         raise RuntimeError("SPAdes not found in PATH.")
     

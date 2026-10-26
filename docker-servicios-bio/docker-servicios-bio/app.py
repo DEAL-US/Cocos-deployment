@@ -10,7 +10,7 @@ import uuid
 import shutil
 from pathlib import Path
 import os
-from typing import Optional
+from typing import Literal, Optional
 import json
 import logging
 from datetime import datetime, timezone, timedelta
@@ -84,7 +84,8 @@ async def assemble_illumina(
     min_contig: int = Query(DEFAULT_MIN_CONTIG, ge=0),
     threads: int = Query(DEFAULT_ILLUMINA_THREADS, ge=1),
     memory: int = Query(DEFAULT_ILLUMINA_MEMORY_GB, ge=1),
-    assembler: str = None,
+    # Only the name of a supported assembler, never a path: it chooses the program the job runs
+    assembler: Optional[Literal["spades"]] = None,
     annotate: bool = False,
     annotation_threads: int = Query(DEFAULT_ANNOTATION_THREADS, ge=1)
 ):
@@ -144,7 +145,7 @@ async def assemble_ont(
     reads: UploadFile,
     min_contig: int = Query(DEFAULT_MIN_CONTIG, ge=0),
     threads: int = Query(DEFAULT_ONT_THREADS, ge=1),
-    assembler: str = None,
+    assembler: Optional[Literal["flye", "raven"]] = None,
     annotate: bool = False,
     annotation_threads: int = Query(DEFAULT_ANNOTATION_THREADS, ge=1)
 ):
