@@ -4,11 +4,12 @@ Deploy Cocos application with Docker Compose.
 Manages bio-service, mock bio-service, and web service stacks.
 
 Usage:
-    python deploy.py [--no-build] [--mock] [--down]
+    python deploy.py [--no-build] [--mock] [--dev] [--down]
 
 Options:
     --no-build  Skip rebuilding images
     --mock      Use the mock bio-service instead of the real bio-service
+    --dev       Also publish the real bio-service API on localhost:8000 (e.g. for test.http)
     --down      Stop and remove all Cocos containers
 """
 
@@ -140,22 +141,25 @@ class DockerDeployer:
         compose_file: Path,
         project: str,
         build: bool = True,
+        override_files: tuple[Path, ...] = (),
     ) -> bool:
-        """Deploy a Docker Compose service."""
+        """Deploy a Docker Compose service, with the override files on top of its compose file."""
         print(f"\nDeploying {name}...")
 
-        if not compose_file.exists():
-            print(
-                f"docker-compose.yml not found at "
-                f"{compose_file}"
-            )
-            return False
+        for file in (compose_file, *override_files):
+            if not file.exists():
+                print(
+                    f"{file.name} not found at "
+                    f"{file}"
+                )
+                return False
 
-        cmd = [
-            "docker",
-            "compose",
-            "-f",
-            str(compose_file),
+        cmd = ["docker", "compose"]
+
+        for file in (compose_file, *override_files):
+            cmd += ["-f", str(file)]
+
+        cmd += [
             "-p",
             project,
             "up",
@@ -280,8 +284,9 @@ class DockerDeployer:
         self,
         build: bool = True,
         mock: bool = False,
+        dev: bool = False,
     ) -> bool:
-        """Deploy Cocos services."""
+        """Deploy Cocos services. With dev, the real bio-service API is also published on localhost."""
 
         if not self.validate_setup(mock=mock):
             return False
@@ -325,6 +330,10 @@ class DockerDeployer:
                 / "docker-compose.yml",
                 self.BIO_SERVICE_PROJECT,
                 build=build,
+                override_files=(
+                    (self.bio_service_dir / "docker-compose.dev.yml",)
+                    if dev else ()
+                ),
             ):
                 return False
 
@@ -369,6 +378,15 @@ def main():
     )
 
     parser.add_argument(
+        "--dev",
+        action="store_true",
+        help=(
+            "Also publish the real bio-service API on "
+            "localhost:8000 (e.g. for test.http)"
+        ),
+    )
+
+    parser.add_argument(
         "--down",
         action="store_true",
         help=(
@@ -409,6 +427,7 @@ def main():
     success = deployer.deploy(
         build=not args.no_build,
         mock=args.mock,
+        dev=args.dev,
     )
 
     if success:
@@ -424,6 +443,11 @@ def main():
             print(
                 "  • Mock Bio Service: "
                 "http://localhost:8001"
+            )
+        elif args.dev:
+            print(
+                "  • Bio Service API: "
+                "http://localhost:8000 (only from this machine)"
             )
         else:
             print(
