@@ -101,6 +101,25 @@ def which_any(candidates):
     return None
 
 
+# Why a job failed (the error_kind of a failed job), so that its client can tell whether running it
+# again could work: 'input', a tool exited with an error on the data of the job (it would fail
+# again); 'resources', the job ran out of time or a tool was killed, usually for lack of memory;
+# 'internal', anything else (a missing file, Redis...).
+
+class ToolError(RuntimeError):
+    """A tool of a job exited with an error code."""
+
+    def __init__(self, message, returncode):
+        super().__init__(message)
+        self.kind = tool_error_kind(returncode)
+
+
+def tool_error_kind(returncode):
+    """'resources' if the tool was killed by a signal (a negative code, or 137 = 128 + SIGKILL, what
+    the kernel does when memory runs out), 'input' otherwise."""
+    return "resources" if returncode < 0 or returncode == 137 else "input"
+
+
 def run_cmd(cmd, cwd=None, job_id=None):
     """Run a command and capture output for debugging"""
     cmd_str = ' '.join(str(c) for c in cmd)
@@ -131,7 +150,7 @@ def run_cmd(cmd, cwd=None, job_id=None):
         if job_id:
             append_job_log(job_id, error_msg)
         
-        raise RuntimeError(f"Command failed: {cmd_str}\n{error_msg}") from e
+        raise ToolError(f"Command failed: {cmd_str}\n{error_msg}", e.returncode) from e
 
 
 def filter_contigs(src_fa, dst_fa, min_len, job_id=None):
@@ -252,7 +271,7 @@ def perform_ont_assembly(reads_path: str, output_dir: Path, threads: int,
         except subprocess.CalledProcessError as e:
             error_msg = f"Raven failed with code {e.returncode}\nSTDERR: {e.stderr or 'No stderr'}"
             append_job_log(job_id, f"[ERROR] {error_msg}")
-            raise RuntimeError(error_msg) from e
+            raise ToolError(error_msg, e.returncode) from e
     
     if not contigs.exists():
         raise RuntimeError(f"Contigs not found after ONT assembly: {contigs}")
@@ -388,7 +407,8 @@ def run_assembly_task(self, job_id: str, tech: str, files: dict, params: dict):
     except SoftTimeLimitExceeded:
         error_msg = f"Assembly timed out after {ASSEMBLY_SOFT_TIMEOUT} seconds"
         append_job_log(job_id, f"[TIMEOUT] {error_msg}")
-        update_job(job_id, status="failed", stage="assembly", celery_task_id="", message=error_msg)
+        update_job(job_id, status="failed", stage="assembly", celery_task_id="", message=error_msg,
+                   error_kind="resources")
         return {"job_id": job_id, "status": "failed", "error": error_msg}
         
     except Exception as e:
@@ -402,6 +422,7 @@ def run_assembly_task(self, job_id: str, tech: str, files: dict, params: dict):
             stage="assembly",
             celery_task_id="",
             message=error_msg,
+            error_kind=getattr(e, "kind", "internal"),
             error_trace=error_trace
         )
         return {"job_id": job_id, "status": "failed", "error": error_msg}
@@ -455,7 +476,8 @@ def run_annotation_task(self, job_id: str, contigs_path: str, threads: int):
     except SoftTimeLimitExceeded:
         error_msg = f"Annotation timed out after {ANNOTATION_SOFT_TIMEOUT} seconds"
         append_job_log(job_id, f"[TIMEOUT] {error_msg}")
-        update_job(job_id, status="failed", stage="annotation", celery_task_id="", message=error_msg)
+        update_job(job_id, status="failed", stage="annotation", celery_task_id="", message=error_msg,
+                   error_kind="resources")
         return {"job_id": job_id, "status": "failed", "error": error_msg}
         
     except Exception as e:
@@ -469,6 +491,7 @@ def run_annotation_task(self, job_id: str, contigs_path: str, threads: int):
             stage="annotation",
             celery_task_id="",
             message=error_msg,
+            error_kind=getattr(e, "kind", "internal"),
             error_trace=error_trace
         )
         return {"job_id": job_id, "status": "failed", "error": error_msg}
@@ -500,7 +523,8 @@ def cleanup_stale_jobs():
                 job_id,
                 status="failed",
                 stage=stage,
-                message=error_msg
+                message=error_msg,
+                error_kind="internal"
             )
             logger.warning(f"Marked stale job {job_id} as failed")
     
