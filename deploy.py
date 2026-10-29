@@ -4,13 +4,13 @@ Deploy Cocos application with Docker Compose.
 Manages bio-service, mock bio-service, and web service stacks.
 
 Usage:
-    python deploy.py [--no-build] [--mock] [--dev] [--down]
+    python deploy.py [--no-build] [--mock] [--expose-api] [--down]
 
 Options:
-    --no-build  Skip rebuilding images
-    --mock      Use the mock bio-service instead of the real bio-service
-    --dev       Also publish the real bio-service API on localhost:8000 (e.g. for test.http)
-    --down      Stop and remove all Cocos containers
+    --no-build    Skip rebuilding images
+    --mock        Use the mock bio-service instead of the real bio-service
+    --expose-api  Also publish the real bio-service API on localhost:8000 (e.g. for test.http)
+    --down        Stop and remove all Cocos containers
 """
 
 import argparse
@@ -284,9 +284,9 @@ class DockerDeployer:
         self,
         build: bool = True,
         mock: bool = False,
-        dev: bool = False,
+        expose_api: bool = False,
     ) -> bool:
-        """Deploy Cocos services. With dev, the real bio-service API is also published on localhost."""
+        """Deploy Cocos services. With expose_api, the real bio-service API is also published on localhost."""
 
         if not self.validate_setup(mock=mock):
             return False
@@ -332,7 +332,7 @@ class DockerDeployer:
                 build=build,
                 override_files=(
                     (self.bio_service_dir / "docker-compose.dev.yml",)
-                    if dev else ()
+                    if expose_api else ()
                 ),
             ):
                 return False
@@ -378,7 +378,7 @@ def main():
     )
 
     parser.add_argument(
-        "--dev",
+        "--expose-api",
         action="store_true",
         help=(
             "Also publish the real bio-service API on "
@@ -427,7 +427,7 @@ def main():
     success = deployer.deploy(
         build=not args.no_build,
         mock=args.mock,
-        dev=args.dev,
+        expose_api=args.expose_api,
     )
 
     if success:
@@ -444,7 +444,7 @@ def main():
                 "  • Mock Bio Service: "
                 "http://localhost:8001"
             )
-        elif args.dev:
+        elif args.expose_api:
             print(
                 "  • Bio Service API: "
                 "http://localhost:8000 (only from this machine)"

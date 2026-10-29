@@ -27,12 +27,12 @@ or, in a clone made without it, run `git submodule update --init`.
 
 From the root of the repository:
 
-| Command                     | What it starts                                                                     |
-| --------------------------- | ---------------------------------------------------------------------------------- |
-| `python deploy.py --mock`   | The mock of the bio service and Cocos, without the Bakta database                   |
-| `python deploy.py`          | The real bio service and Cocos                                                       |
-| `python deploy.py --dev`    | The same, also publishing the API of the bio service on `127.0.0.1:8000`             |
-| `python deploy.py --down`   | Nothing: stops and removes every container                                           |
+| Command                          | What it starts                                                                     |
+| -------------------------------- | ---------------------------------------------------------------------------------- |
+| `python deploy.py --mock`        | The mock of the bio service and Cocos, without the Bakta database                   |
+| `python deploy.py`               | The real bio service and Cocos                                                       |
+| `python deploy.py --expose-api`  | The same, also publishing the API of the bio service on `127.0.0.1:8000`             |
+| `python deploy.py --down`        | Nothing: stops and removes every container                                           |
 
 `--no-build` skips rebuilding the images. `deploy.py` creates the Docker network `cocos-network`, which the stacks share, if it does not exist, and stops the bio service or the mock that is not used.
 
@@ -40,7 +40,7 @@ From the root of the repository:
 | ------------------- | ---------------------------------------------------------- |
 | Cocos               | `http://localhost:8080`                                    |
 | Mock of the service | `http://localhost:8001`, only from this machine            |
-| Bio service         | `http://bio-assembly-api:8000`, only inside `cocos-network` (and `127.0.0.1:8000` with `--dev`) |
+| Bio service         | `http://bio-assembly-api:8000`, only inside `cocos-network` (and `127.0.0.1:8000` with `--expose-api`) |
 
 Cocos is started with its development stack (see its [development guide](https://github.com/DEAL-US/Cocos/blob/main/docs/development.md)). For production, start the bio service on its own (see below) and then the production stack of Cocos (see its [production guide](https://github.com/DEAL-US/Cocos/blob/main/docs/production.md)).
 

@@ -1,7 +1,7 @@
 # Solo para desarrollo: publica la API en el puerto 8000 del propio equipo (127.0.0.1), para probarla
 # con test.http. Se añade encima del compose principal, que no publica ningún puerto:
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-# o, desde la raíz del proyecto: python deploy.py --dev
+# o, desde la raíz del proyecto: python deploy.py --expose-api
 services:
   bio-assembly-api:
     ports:
