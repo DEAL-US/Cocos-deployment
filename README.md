@@ -47,7 +47,7 @@ The development stack of Cocos is described in its [development guide](https://g
 
 ## Bio Service
 
-The bio service assembles Illumina reads with SPAdes and ONT reads with Raven (or Flye, if it is installed), and annotates assemblies with Bakta, which runs AMRFinderPlus. Each job reports the versions of the tools and databases it used (`GET /tools` lists them).
+The bio service assembles Illumina reads with SPAdes and ONT reads with Raven or Flye, and annotates assemblies with Bakta, which runs AMRFinderPlus. An ONT assembly uses the assembler it asks for (`?assembler=raven` or `?assembler=flye`), or `DEFAULT_ONT_ASSEMBLER` otherwise. Each job reports the versions of the tools and databases it used, and `GET /tools` lists what a new job would use: under `assembly`, the default assembler of each technology, and under `assemblers`, every installed one.
 
 | Container                       | What                                                       |
 | ------------------------------- | ---------------------------------------------------------- |
@@ -89,6 +89,7 @@ The variables are set in `docker-compose.yml`. The resources of each container (
 | `DEFAULT_MIN_CONTIG`                                   | `500`          | Minimum length of the contigs of an assembly, in bases                      |
 | `DEFAULT_ILLUMINA_THREADS`, `DEFAULT_ILLUMINA_MEMORY_GB` | `4`, `16`    | Threads and memory of an Illumina assembly                                  |
 | `DEFAULT_ONT_THREADS`                                  | `4`            | Threads of an ONT assembly                                                  |
+| `DEFAULT_ONT_ASSEMBLER`                                | `raven`        | Assembler of an ONT assembly that does not ask for one (`raven` or `flye`)  |
 | `DEFAULT_ANNOTATION_THREADS`                           | `4`            | Threads of an annotation                                                    |
 | `CELERY_CONCURRENCY`                                   | `1`            | Jobs a worker runs at the same time                                         |
 | `CELERY_MAIN_QUEUE`, `CELERY_MAINTENANCE_QUEUE`        | `default`, `maintenance` | Celery queues of the jobs and of the cleanup                      |

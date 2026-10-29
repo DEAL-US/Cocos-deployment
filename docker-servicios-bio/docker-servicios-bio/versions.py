@@ -15,12 +15,17 @@ runs); the versions of the databases are read every time, since the AMRFinderPlu
 be updated when a worker starts.
 """
 import json
+import os
 import re
 import subprocess
 from functools import lru_cache
 from pathlib import Path
 
 BAKTA_DB = Path("/data/bakta_db")
+
+# The assemblers a job may ask for, by technology, and the one it uses when it does not ask
+ASSEMBLERS = {"illumina": ("spades",), "ont": ("raven", "flye")}
+DEFAULT_ASSEMBLERS = {"illumina": "spades", "ont": os.getenv("DEFAULT_ONT_ASSEMBLER", "raven")}
 
 # name -> (display name, command, bio.tools id)
 TOOLS = {
@@ -86,11 +91,18 @@ def annotation_software():
 
 
 def installed():
-    """Everything this service has, for GET /tools."""
+    """Everything this service has, for GET /tools: under "assembly", what an assembly of each
+    technology uses by default; under "assemblers", the default and every installed assembler."""
     return {
         "assembly": {
-            "illumina": assembly_software("spades"),
-            "ont": _present([tool("flye") or tool("raven")]),
+            technology: assembly_software(default) for technology, default in DEFAULT_ASSEMBLERS.items()
+        },
+        "assemblers": {
+            technology: {
+                "default": DEFAULT_ASSEMBLERS[technology],
+                "available": {name: assembly_software(name) for name in names if tool(name)},
+            }
+            for technology, names in ASSEMBLERS.items()
         },
         "annotation": annotation_software(),
     }

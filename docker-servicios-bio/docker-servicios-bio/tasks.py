@@ -12,7 +12,7 @@ import json
 import traceback
 import logging
 
-from versions import annotation_software, assembly_software
+from versions import DEFAULT_ASSEMBLERS, annotation_software, assembly_software
 
 # Import shared utilities
 from utils import (
@@ -234,18 +234,11 @@ def perform_ont_assembly(reads_path: str, output_dir: Path, threads: int,
     
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    exe = None
-    mode = None
-    if assembler in (None, "flye"):
-        exe = which_any(["flye"])
-        mode = "flye" if exe else None
-    if not exe and assembler in (None, "raven"):
-        exe = which_any(["raven"])
-        mode = "raven" if exe else None
-    
+    mode = assembler or DEFAULT_ASSEMBLERS["ont"]
+    exe = which_any([mode])
     if not exe:
-        raise RuntimeError("Flye/Raven not found in PATH.")
-    
+        raise RuntimeError(f"{mode} not found in PATH.")
+
     append_job_log(job_id, f"Using assembler: {mode} ({exe})")
     record_software(job_id, assembly_software(mode))
     

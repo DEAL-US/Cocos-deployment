@@ -32,6 +32,7 @@ services:
       - DEFAULT_ILLUMINA_THREADS=4
       - DEFAULT_ILLUMINA_MEMORY_GB=16
       - DEFAULT_ONT_THREADS=4
+      - DEFAULT_ONT_ASSEMBLER=raven
       - DEFAULT_ANNOTATION_THREADS=4
     command: ["conda", "run", "--no-capture-output", "-n", "bio_env", "sh", "-c", "gunicorn -c gunicorn.conf.py app:app"]
     restart: unless-stopped
@@ -62,6 +63,7 @@ services:
     environment:
       - WORKDIR_PATH=/data/workdir
       - REDIS_URL=redis://bio-redis:6379/0
+      - DEFAULT_ONT_ASSEMBLER=raven
       - CELERY_CONCURRENCY=1
       - CELERY_MAIN_QUEUE=default
       - CELERY_MAINTENANCE_QUEUE=maintenance
