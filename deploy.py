@@ -4,12 +4,13 @@ Deploy Cocos application with Docker Compose.
 Manages bio-service, mock bio-service, and web service stacks.
 
 Usage:
-    python deploy.py [--no-build] [--mock] [--expose-api] [--down]
+    python deploy.py [--no-build] [--mock] [--expose-api] [--prod] [--down]
 
 Options:
     --no-build    Skip rebuilding images
     --mock        Use the mock bio-service instead of the real bio-service
     --expose-api  Also publish the real bio-service API on localhost:8000 (e.g. for test.http)
+    --prod        Deploy the production stack of Cocos instead of the development one
     --down        Stop and remove all Cocos containers
 """
 
@@ -28,6 +29,7 @@ class DockerDeployer:
     BIO_SERVICE_PROJECT = "bio-service"
     MOCK_BIO_SERVICE_PROJECT = "mock-bio-service"
     WEB_SERVICE_PROJECT = "cocos-dev"
+    PROD_WEB_SERVICE_PROJECT = "cocos-prod"
 
     def __init__(self, project_root: Path):
         self.project_root = Path(project_root)
@@ -44,12 +46,16 @@ class DockerDeployer:
             / "docker"
         )
 
+        self.prod_compose_file = self.web_service_dir / "docker-compose.prod.yml"
+        self.prod_env_file = self.project_root / "cocos" / ".env.prod"
+        self.setup_prod_script = self.project_root / "cocos" / "scripts" / "setup_prod.py"
+
         self.mock_bio_service_dir = (
             self.project_root
             / "mock-bio-service"
         )
 
-    def validate_setup(self, mock: bool = False) -> bool:
+    def validate_setup(self, mock: bool = False, prod: bool = False) -> bool:
         """Validate project structure and prerequisites."""
         print("Validating setup...")
 
@@ -78,7 +84,20 @@ class DockerDeployer:
 
             print(f"{name} found at {path}")
 
+        if prod and not self.prod_compose_file.exists():
+            print(f"docker-compose.prod.yml not found at {self.prod_compose_file}")
+            return False
+
         return True
+
+    def check_prod_env(self) -> bool:
+        """Prepare and check .env.prod with the setup script of Cocos, which says what is missing."""
+        print("\nChecking .env.prod...")
+        result = subprocess.run(
+            [sys.executable, str(self.setup_prod_script)],
+            check=False,
+        )
+        return result.returncode == 0
 
     def run_docker(self, cmd: list[str]) -> int:
         """Execute a Docker command."""
@@ -142,6 +161,7 @@ class DockerDeployer:
         project: str,
         build: bool = True,
         override_files: tuple[Path, ...] = (),
+        env_file: Path | None = None,
     ) -> bool:
         """Deploy a Docker Compose service, with the override files on top of its compose file."""
         print(f"\nDeploying {name}...")
@@ -155,6 +175,9 @@ class DockerDeployer:
                 return False
 
         cmd = ["docker", "compose"]
+
+        if env_file:
+            cmd += ["--env-file", str(env_file)]
 
         for file in (compose_file, *override_files):
             cmd += ["-f", str(file)]
@@ -180,12 +203,13 @@ class DockerDeployer:
         self,
         project: str,
         compose_file: Path,
+        env_file: Path | None = None,
     ) -> bool:
         """
         Stop and remove a Docker Compose project.
 
         Returns True if the project was stopped successfully or
-        if its compose file does not exist.
+        if its compose file (or its env file, without which it never ran) does not exist.
         """
         if not compose_file.exists():
             print(
@@ -194,12 +218,17 @@ class DockerDeployer:
             )
             return True
 
+        if env_file and not env_file.exists():
+            print(f"Skipping {project}: {env_file.name} not found")
+            return True
+
         print(f"Stopping {project}...")
 
         result = self.run_docker(
             [
                 "docker",
                 "compose",
+                *(["--env-file", str(env_file)] if env_file else []),
                 "-f",
                 str(compose_file),
                 "-p",
@@ -278,6 +307,13 @@ class DockerDeployer:
             ):
                 all_ok = False
 
+        if not self.stop_project(
+            self.PROD_WEB_SERVICE_PROJECT,
+            self.prod_compose_file,
+            env_file=self.prod_env_file,
+        ):
+            all_ok = False
+
         return all_ok
 
     def deploy(
@@ -285,10 +321,17 @@ class DockerDeployer:
         build: bool = True,
         mock: bool = False,
         expose_api: bool = False,
+        prod: bool = False,
     ) -> bool:
-        """Deploy Cocos services. With expose_api, the real bio-service API is also published on localhost."""
+        """
+        Deploy Cocos services. With expose_api, the real bio-service API is also published on
+        localhost; with prod, the production stack of Cocos is deployed instead of the development one.
+        """
 
-        if not self.validate_setup(mock=mock):
+        if not self.validate_setup(mock=mock, prod=prod):
+            return False
+
+        if prod and not self.check_prod_env():
             return False
 
         if not self.ensure_network():
@@ -341,6 +384,15 @@ class DockerDeployer:
         # Deploy web service
         # -----------------------------------------------------
 
+        if prod:
+            return self.deploy_service(
+                "Web Service (production)",
+                self.prod_compose_file,
+                self.PROD_WEB_SERVICE_PROJECT,
+                build=build,
+                env_file=self.prod_env_file,
+            )
+
         if not self.deploy_service(
             "Web Service",
             self.web_service_dir
@@ -387,6 +439,15 @@ def main():
     )
 
     parser.add_argument(
+        "--prod",
+        action="store_true",
+        help=(
+            "Deploy the production stack of Cocos "
+            "instead of the development one"
+        ),
+    )
+
+    parser.add_argument(
         "--down",
         action="store_true",
         help=(
@@ -395,6 +456,9 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if args.prod and (args.mock or args.expose_api):
+        parser.error("--prod uses the real bio-service and does not publish its API")
 
     project_root = Path(__file__).parent
     deployer = DockerDeployer(project_root)
@@ -428,6 +492,7 @@ def main():
         build=not args.no_build,
         mock=args.mock,
         expose_api=args.expose_api,
+        prod=args.prod,
     )
 
     if success:
@@ -457,7 +522,7 @@ def main():
 
         print(
             "  • Web Service: "
-            "http://localhost:8080"
+            + ("http://localhost (port 80), or its domain" if args.prod else "http://localhost:8080")
         )
 
         print("\nUseful commands:")
@@ -485,6 +550,11 @@ def main():
         print(
             "  • Mock without rebuilding: "
             "python deploy.py --mock --no-build"
+        )
+
+        print(
+            "  • Deploy for production: "
+            "python deploy.py --prod"
         )
 
         return 0
