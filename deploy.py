@@ -27,7 +27,7 @@ class DockerDeployer:
 
     BIO_SERVICE_PROJECT = "bio-service"
     MOCK_BIO_SERVICE_PROJECT = "mock-bio-service"
-    WEB_SERVICE_PROJECT = "bio-web"
+    WEB_SERVICE_PROJECT = "cocos-dev"
 
     def __init__(self, project_root: Path):
         self.project_root = Path(project_root)
