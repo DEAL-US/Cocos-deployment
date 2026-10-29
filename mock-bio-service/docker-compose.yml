@@ -19,10 +19,10 @@ services:
       --reload
 
     networks:
-      - bio-network
+      - cocos-network
 
     restart: unless-stopped
 
 networks:
-  bio-network:
+  cocos-network:
     external: true

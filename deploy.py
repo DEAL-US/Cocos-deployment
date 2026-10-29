@@ -23,7 +23,7 @@ from pathlib import Path
 class DockerDeployer:
     """Manages Docker deployment for Cocos services."""
 
-    NETWORK_NAME = "bio-network"
+    NETWORK_NAME = "cocos-network"
 
     BIO_SERVICE_PROJECT = "bio-service"
     MOCK_BIO_SERVICE_PROJECT = "mock-bio-service"

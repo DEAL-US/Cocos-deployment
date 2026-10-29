@@ -11,7 +11,7 @@ services:
       timeout: 3s
       retries: 3
     networks:
-      - bio-network
+      - cocos-network
 
   bio-assembly-api:
     build: .
@@ -19,7 +19,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    # No published ports: the API has no authentication, so only Cocos reaches it, through bio-network
+    # No published ports: the API has no authentication, so only Cocos reaches it, through cocos-network
     volumes:
       - ./data/db-light:/data/bakta_db
       - ./data/workdir:/data/workdir
@@ -36,7 +36,7 @@ services:
     command: ["conda", "run", "--no-capture-output", "-n", "bio_env", "sh", "-c", "gunicorn -c gunicorn.conf.py app:app"]
     restart: unless-stopped
     networks:
-      - bio-network
+      - cocos-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -80,7 +80,7 @@ services:
           cpus: '2'
           memory: 4G
     networks:
-      - bio-network
+      - cocos-network
 
   celery-beat:
     build: .
@@ -108,7 +108,7 @@ services:
           cpus: '0.25'
           memory: 128M
     networks:
-      - bio-network
+      - cocos-network
 
   celery-maintenance-worker:
     build: .
@@ -137,7 +137,7 @@ services:
           cpus: '0.25'
           memory: 256M
     networks:
-      - bio-network
+      - cocos-network
 
   # Optional: Flower for Celery monitoring (access at http://localhost:5555). You can have it running by adding the "monitoring" profile when starting the stack (e.g. `docker-compose --profile monitoring up --build`)
   flower:
@@ -158,12 +158,12 @@ services:
     profiles:
       - monitoring
     networks:
-      - bio-network
+      - cocos-network
 
 volumes:
   bio_redis_data:
 
 networks:
-  bio-network:
+  cocos-network:
     external: true
-    name: bio-network
+    name: cocos-network
