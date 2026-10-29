@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import FastAPI, HTTPException, Query, Response
 
 from .config import DEFAULT_DURATION, get_behavior
@@ -6,6 +8,7 @@ from .mock_data import (
     ANNOTATION_SOFTWARE,
     ASSEMBLY_SOFTWARE,
     annotation_json,
+    assemblers,
     assembly_fasta,
     assembly_software,
     invalid_json,
@@ -99,24 +102,26 @@ def job_status(job_id: str):
 @app.get("/tools")
 def tools():
     """What a new job would use, like GET /tools of the real service."""
-    return {"assembly": ASSEMBLY_SOFTWARE, "annotation": ANNOTATION_SOFTWARE}
+    return {"assembly": ASSEMBLY_SOFTWARE, "assemblers": assemblers(), "annotation": ANNOTATION_SOFTWARE}
 
 
 @app.post("/assembly/ont")
 def assembly_ont(
     annotate: bool = False,
+    assembler: Literal["raven", "flye"] | None = None,
     behavior: str | None = Query(default=None),
 ):
     log(
         f"REQUEST assembly_ont | "
         f"annotate={annotate} | "
+        f"assembler={assembler} | "
         f"behavior={behavior}"
     )
 
     return create_mock_job(
         "assembly_ont",
         behavior,
-        software=assembly_software("ont", annotate),
+        software=assembly_software("ont", annotate, assembler),
     )
 
 

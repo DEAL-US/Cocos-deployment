@@ -1,8 +1,13 @@
 # The software the real service reports (docker-servicios-bio/versions.py), with the versions it pins
-ASSEMBLY_SOFTWARE = {
-    "illumina": [{"name": "SPAdes", "version": "4.3.0", "type": "tool", "biotools": "spades"}],
-    "ont": [{"name": "Raven", "version": "1.8.3", "type": "tool", "biotools": "raven"}],
+ASSEMBLERS = {
+    "illumina": {"spades": [{"name": "SPAdes", "version": "4.3.0", "type": "tool", "biotools": "spades"}]},
+    "ont": {
+        "raven": [{"name": "Raven", "version": "1.8.3", "type": "tool", "biotools": "raven"}],
+        "flye": [{"name": "Flye", "version": "2.9.6", "type": "tool", "biotools": "flye"}],
+    },
 }
+DEFAULT_ASSEMBLERS = {"illumina": "spades", "ont": "raven"}
+ASSEMBLY_SOFTWARE = {technology: ASSEMBLERS[technology][default] for technology, default in DEFAULT_ASSEMBLERS.items()}
 ANNOTATION_SOFTWARE = [
     {"name": "Bakta", "version": "1.12.1", "type": "tool", "biotools": "bakta"},
     {"name": "Bakta database", "version": "6.0", "type": "database", "variant": "light",
@@ -12,8 +17,15 @@ ANNOTATION_SOFTWARE = [
 ]
 
 
-def assembly_software(technology: str, annotate: bool) -> list:
-    return ASSEMBLY_SOFTWARE[technology] + (ANNOTATION_SOFTWARE if annotate else [])
+def assembly_software(technology: str, annotate: bool, assembler: str | None = None) -> list:
+    tools = ASSEMBLERS[technology][assembler or DEFAULT_ASSEMBLERS[technology]]
+    return tools + (ANNOTATION_SOFTWARE if annotate else [])
+
+
+def assemblers() -> dict:
+    """The "assemblers" of GET /tools: the default and every assembler, by technology."""
+    return {technology: {"default": DEFAULT_ASSEMBLERS[technology], "available": available}
+            for technology, available in ASSEMBLERS.items()}
 
 
 def assembly_fasta() -> bytes:
