@@ -23,6 +23,12 @@ git clone --recurse-submodules https://github.com/DEAL-US/Cocos-deployment.git
 
 or, in a clone made without it, run `git submodule update --init`.
 
+The bio service works without configuration. To use the full Bakta database or Flye by default, copy its example settings and edit them (see [Configuration](#configuration)):
+
+```bash
+cp bio-service/.env.example bio-service/.env
+```
+
 ## Usage
 
 From the root of the repository:
