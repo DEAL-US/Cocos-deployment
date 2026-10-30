@@ -9,3 +9,4 @@ pesos-modelos
 bio-service/data
 bio-service/test-data
 memoria
+bio-service/.env

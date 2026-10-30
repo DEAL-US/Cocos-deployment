@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Create conda environment and install all dependencies in one layer.
 # Versions are pinned so that the image is reproducible: the jobs report them (versions.py), and
-# Bakta 1.12 needs the Bakta database v6 (db-light 6.0).
+# Bakta 1.12 needs the Bakta database v6, light or full (BAKTA_DB_TYPE).
 RUN conda create -n bio_env python=3.11.17 -y && \
     conda install -n bio_env -c bioconda -c conda-forge \
     spades=4.3.0 raven-assembler=1.8.3 flye=2.9.6 bakta=1.12.1 ncbi-amrfinderplus=4.2.7 biopython=1.88 \

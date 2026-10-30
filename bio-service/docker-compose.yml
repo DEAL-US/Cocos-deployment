@@ -24,7 +24,7 @@ services:
         condition: service_healthy
     # No published ports: the API has no authentication, so only Cocos reaches it, through cocos-network
     volumes:
-      - ./data/db-light:/data/bakta_db
+      - ./data/db-${BAKTA_DB_TYPE:-light}:/data/bakta_db
       - ./data/workdir:/data/workdir
     environment:
       - WORKDIR_PATH=/data/workdir
@@ -35,7 +35,7 @@ services:
       - DEFAULT_ILLUMINA_THREADS=4
       - DEFAULT_ILLUMINA_MEMORY_GB=16
       - DEFAULT_ONT_THREADS=4
-      - DEFAULT_ONT_ASSEMBLER=raven
+      - DEFAULT_ONT_ASSEMBLER=${DEFAULT_ONT_ASSEMBLER:-raven}
       - DEFAULT_ANNOTATION_THREADS=4
     command: ["conda", "run", "--no-capture-output", "-n", "bio_env", "sh", "-c", "gunicorn -c gunicorn.conf.py app:app"]
     restart: unless-stopped
@@ -61,12 +61,12 @@ services:
     build: .
     container_name: bio-celery-worker
     volumes:
-      - ./data/db-light:/data/bakta_db
+      - ./data/db-${BAKTA_DB_TYPE:-light}:/data/bakta_db
       - ./data/workdir:/data/workdir
     environment:
       - WORKDIR_PATH=/data/workdir
       - REDIS_URL=redis://bio-redis:6379/0
-      - DEFAULT_ONT_ASSEMBLER=raven
+      - DEFAULT_ONT_ASSEMBLER=${DEFAULT_ONT_ASSEMBLER:-raven}
       - CELERY_CONCURRENCY=1
       - CELERY_MAIN_QUEUE=default
       - CELERY_MAINTENANCE_QUEUE=maintenance
@@ -94,7 +94,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./data/db-light:/data/bakta_db
+      - ./data/db-${BAKTA_DB_TYPE:-light}:/data/bakta_db
       - ./data/workdir:/data/workdir
     environment:
       - WORKDIR_PATH=/data/workdir
@@ -122,7 +122,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./data/db-light:/data/bakta_db
+      - ./data/db-${BAKTA_DB_TYPE:-light}:/data/bakta_db
       - ./data/workdir:/data/workdir
     environment:
       - WORKDIR_PATH=/data/workdir
