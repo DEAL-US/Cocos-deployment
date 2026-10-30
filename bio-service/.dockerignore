@@ -21,3 +21,7 @@ test_*.py
 .pytest_cache
 .coverage
 htmlcov/
+
+# Mounted at run time, never part of the image
+data
+test-data
