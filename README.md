@@ -13,7 +13,7 @@ Deployment of [Cocos](https://github.com/DEAL-US/Cocos) together with the bio se
 
 - Docker, with Docker Compose.
 - Python 3, to run `deploy.py`.
-- For the real bio service, the light Bakta database, version 6 (the one Bakta 1.12 needs), in `bio-service/data/db-light`. Bakta can download it with `bakta_db download --output data --type light`, from that folder (see the [Bakta documentation](https://github.com/oschwengers/bakta#database)). The AMRFinderPlus database inside it is updated each time the workers start, so they need internet.
+- For the real bio service, a Bakta database, which `deploy.py` can download (see [Bakta database](#bakta-database)). The mock does not need it.
 
 Clone the repository with its submodule:
 
@@ -27,13 +27,14 @@ or, in a clone made without it, run `git submodule update --init`.
 
 From the root of the repository:
 
-| Command                          | What it starts                                                                     |
-| -------------------------------- | ---------------------------------------------------------------------------------- |
-| `python deploy.py --mock`        | The mock of the bio service and the development stack of Cocos, without the Bakta database |
-| `python deploy.py`               | The real bio service and the development stack of Cocos                            |
-| `python deploy.py --expose-api`  | The same, also publishing the API of the bio service on `127.0.0.1:8000`           |
-| `python deploy.py --prod`        | The real bio service and the production stack of Cocos                             |
-| `python deploy.py --down`        | Nothing: stops and removes every container                                         |
+| Command                                      | What it starts                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `python deploy.py --mock`                    | The mock of the bio service and the development stack of Cocos, without the Bakta database |
+| `python deploy.py`                           | The real bio service and the development stack of Cocos                                    |
+| `python deploy.py --expose-api`              | The same, also publishing the API of the bio service on `127.0.0.1:8000`                   |
+| `python deploy.py --prod`                    | The real bio service and the production stack of Cocos                                     |
+| `python deploy.py --down`                    | Nothing: stops and removes every container                                                 |
+| `python deploy.py --download-bakta-db light` | Nothing: downloads the light (or `full`) Bakta database of the bio service                 |
 
 `--no-build` skips rebuilding the images. `deploy.py` creates the Docker network `cocos-network`, which the stacks share, if it does not exist, and stops the bio service or the mock that is not used.
 
@@ -79,9 +80,43 @@ docker run --rm --network cocos-network curlimages/curl http://bio-assembly-api:
 
 Flower has no authentication either. It starts with the `monitoring` profile (`docker compose -p bio-service --profile monitoring up -d`) and is published only on `127.0.0.1:5555`; on a server, reach it through an SSH tunnel (`ssh -L 5555:localhost:5555 <server>`).
 
+### Bakta database
+
+Bakta annotates with its own database, which is not in the image: it is downloaded once into `bio-service/data`. Bakta 1.12 needs version 6 of the database, which comes in two types ([Zenodo record](https://doi.org/10.5281/zenodo.14916843), [Bakta documentation](https://github.com/oschwengers/bakta#database)):
+
+| Type    | Download | On disk | What                                                                                                     |
+| ------- | -------- | ------- | -------------------------------------------------------------------------------------------------------- |
+| `light` | 1.3 GB   | 3.9 GB  | Faster, and enough for most uses: the coding genes are annotated only from UniRef50 clusters             |
+| `full`  | 32 GB    | 84 GB   | More specific annotations of the coding genes, at the cost of space and time; Bakta's own recommendation |
+
+`BAKTA_DB_TYPE` (`light` by default) chooses the one the service uses, which it reads from `data/db-light` or `data/db-full`. Both can be downloaded and kept, and the service switches between them when it is started again. Each job records the type and version of the database it used.
+
+`deploy.py` downloads one with Bakta itself, inside the image of the bio service (which it builds first if needed), so Bakta does not have to be installed on the machine:
+
+```bash
+python deploy.py --download-bakta-db light   # or full
+```
+
+It downloads into a temporary folder and only then moves the database into place, so a download that is cut can simply be started again. If the folder is already there, it does nothing. Without `deploy.py`, from `bio-service/`, the same can be done by hand:
+
+```bash
+docker compose -p bio-service build bio-assembly-api
+docker run --rm -v ./data:/data/download bio-service-bio-assembly-api bakta_db download --output /data/download --type light
+```
+
+which leaves the light database in `data/db-light` and the full one in `data/db`, to be renamed `data/db-full`.
+
+The last step of the download updates the AMRFinderPlus database inside it, and on Docker Desktop for Windows its indexing can fail with `LMDB runtime error: mdb_env_open: Input/output error`. The database is fine: `deploy.py` indexes it again by mounting the folder of the new AMRFinderPlus version on its own, which works. By hand, from `bio-service/`:
+
+```bash
+docker run --rm -v ./data/db-light/amrfinderplus-db/<version>:/amrfinderplus-db bio-service-bio-assembly-api amrfinder_index /amrfinderplus-db/
+```
+
+When it deploys the real bio service, `deploy.py` warns if the database of `BAKTA_DB_TYPE` is missing. The AMRFinderPlus database inside it is updated each time the workers start, so they need internet.
+
 ### Configuration
 
-The variables are set in `docker-compose.yml`. The resources of each container (`deploy.resources`) are set there too: the worker may use up to 4 CPUs and 16 GB of memory, which should be adapted to the machine.
+`BAKTA_DB_TYPE` and `DEFAULT_ONT_ASSEMBLER` are set in `bio-service/.env` (a copy of `.env.example`); the other variables are set in `docker-compose.yml`. The resources of each container (`deploy.resources`) are set there too: the worker may use up to 4 CPUs and 16 GB of memory, which should be adapted to the machine.
 
 | Variable                                               | Compose value  | What                                                                        |
 | ------------------------------------------------------ | -------------- | --------------------------------------------------------------------------- |
@@ -89,6 +124,7 @@ The variables are set in `docker-compose.yml`. The resources of each container (
 | `DEFAULT_MIN_CONTIG`                                   | `500`          | Minimum length of the contigs of an assembly, in bases                      |
 | `DEFAULT_ILLUMINA_THREADS`, `DEFAULT_ILLUMINA_MEMORY_GB` | `4`, `16`    | Threads and memory of an Illumina assembly                                  |
 | `DEFAULT_ONT_THREADS`                                  | `4`            | Threads of an ONT assembly                                                  |
+| `BAKTA_DB_TYPE`                                        | `light`        | Bakta database of the annotations (`light` or `full`)                       |
 | `DEFAULT_ONT_ASSEMBLER`                                | `raven`        | Assembler of an ONT assembly that does not ask for one (`raven` or `flye`)  |
 | `DEFAULT_ANNOTATION_THREADS`                           | `4`            | Threads of an annotation                                                    |
 | `CELERY_CONCURRENCY`                                   | `1`            | Jobs a worker runs at the same time                                         |
