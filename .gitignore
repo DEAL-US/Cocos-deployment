@@ -7,6 +7,7 @@ bakta50.npz
 ATCC25922.json
 pesos-modelos
 bio-service/data
+model-service/data
 bio-service/test-data
 memoria
 bio-service/.env

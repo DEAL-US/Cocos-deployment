@@ -1,0 +1,8 @@
+# Only for development: publishes the API on port 8002 of this machine (127.0.0.1), to try it by hand.
+# It goes on top of the main compose file, which publishes no port:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# or, from the root of the project: python deploy.py --expose-api
+services:
+  model-api:
+    ports:
+      - "127.0.0.1:8002:8000"

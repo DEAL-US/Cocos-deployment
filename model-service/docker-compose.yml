@@ -1,0 +1,76 @@
+# The same project name as deploy.py, also when this file is used on its own
+name: model-service
+
+services:
+  model-redis:
+    image: redis:8-alpine
+    container_name: model-redis
+    volumes:
+      - model_redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - cocos-network
+
+  model-api:
+    build: .
+    container_name: model-api
+    depends_on:
+      model-redis:
+        condition: service_healthy
+    # No published ports: the API has no authentication, so only Cocos reaches it, through cocos-network
+    volumes:
+      - ./data/workdir:/data/workdir
+      - ./data/databases:/data/databases
+    environment:
+      - WORKDIR_PATH=/data/workdir
+      - REDIS_URL=redis://model-redis:6379/0
+      - MAX_ACTIVE_JOBS=20
+    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+    restart: unless-stopped
+    networks:
+      - cocos-network
+    healthcheck:
+      # The image has no curl
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Runs the prediction jobs
+  model-worker:
+    build: .
+    container_name: model-worker
+    depends_on:
+      model-redis:
+        condition: service_healthy
+    volumes:
+      - ./data/workdir:/data/workdir
+      - ./data/databases:/data/databases
+    environment:
+      - WORKDIR_PATH=/data/workdir
+      - REDIS_URL=redis://model-redis:6379/0
+      - PREDICTION_SOFT_TIMEOUT=3600
+      - PREDICTION_HARD_TIMEOUT=3900
+    command: ["celery", "-A", "tasks", "worker", "--loglevel=info", "--concurrency=2"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+    networks:
+      - cocos-network
+
+volumes:
+  model_redis_data:
+
+networks:
+  cocos-network:
+    external: true
+    name: cocos-network
