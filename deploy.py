@@ -5,6 +5,7 @@ Manages bio-service, mock bio-service, and web service stacks.
 
 Usage:
     python deploy.py [--no-build] [--mock] [--expose-api] [--prod] [--down]
+    python deploy.py --download-bakta-db {light,full}
 
 Options:
     --no-build    Skip rebuilding images
@@ -12,9 +13,12 @@ Options:
     --expose-api  Also publish the real bio-service API on localhost:8000 (e.g. for test.http)
     --prod        Deploy the production stack of Cocos instead of the development one
     --down        Stop and remove all Cocos containers
+    --download-bakta-db
+                  Download the light or the full Bakta database of the bio service
 """
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -31,10 +35,14 @@ class DockerDeployer:
     WEB_SERVICE_PROJECT = "cocos-dev"
     PROD_WEB_SERVICE_PROJECT = "cocos-prod"
 
+    # The Bakta databases the bio service can use (BAKTA_DB_TYPE); the first one is the default
+    BAKTA_DB_TYPES = ("light", "full")
+
     def __init__(self, project_root: Path):
         self.project_root = Path(project_root)
 
         self.bio_service_dir = self.project_root / "bio-service"
+        self.bio_service_image = f"{self.BIO_SERVICE_PROJECT}-bio-assembly-api"
 
         self.web_service_dir = (
             self.project_root
@@ -94,6 +102,100 @@ class DockerDeployer:
             check=False,
         )
         return result.returncode == 0
+
+    def bakta_db_type(self) -> str:
+        """The BAKTA_DB_TYPE the bio service will use: from the environment, or its .env, like Compose."""
+        if os.getenv("BAKTA_DB_TYPE"):
+            return os.environ["BAKTA_DB_TYPE"]
+        env_file = self.bio_service_dir / ".env"
+        if env_file.exists():
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                name, _, value = line.partition("=")
+                if name.strip() == "BAKTA_DB_TYPE" and value.strip():
+                    return value.strip()
+        return self.BAKTA_DB_TYPES[0]
+
+    def bakta_db_dir(self, db_type: str) -> Path:
+        """The folder of a Bakta database, which the compose file of the bio service mounts."""
+        return self.bio_service_dir / "data" / f"db-{db_type}"
+
+    def check_bakta_db(self) -> None:
+        """Warn, before deploying the bio service, if the Bakta database it will use is not there."""
+        db_type = self.bakta_db_type()
+        if (self.bakta_db_dir(db_type) / "version.json").exists():
+            print(f"\nBakta database: {db_type}")
+            return
+        print(
+            f"\nWarning: the {db_type} Bakta database is not in {self.bakta_db_dir(db_type)}, "
+            "so annotations will fail.\n"
+            f"Download it with: python deploy.py --download-bakta-db {db_type}"
+        )
+
+    def download_bakta_db(self, db_type: str) -> bool:
+        """
+        Download a Bakta database with Bakta itself, inside the image of the bio service.
+
+        It is downloaded to a temporary folder and only then renamed, so a download that is cut
+        never leaves half a database where the service looks for it.
+        """
+        target = self.bakta_db_dir(db_type)
+        if target.exists():
+            print(f"The {db_type} Bakta database is already in {target}; remove that folder to download it again")
+            return True
+
+        compose_file = self.bio_service_dir / "docker-compose.yml"
+        image_exists = subprocess.run(
+            ["docker", "image", "inspect", self.bio_service_image],
+            capture_output=True,
+            check=False,
+        ).returncode == 0
+        if not image_exists and self.run_docker(
+            ["docker", "compose", "-f", str(compose_file), "-p", self.BIO_SERVICE_PROJECT,
+             "build", "bio-assembly-api"]
+        ) != 0:
+            print("Failed to build the image of the bio service")
+            return False
+
+        download_dir = target.parent / f"download-{db_type}"
+        shutil.rmtree(download_dir, ignore_errors=True)  # what a cut download left
+        download_dir.mkdir(parents=True)
+
+        # Bakta names the folder of the full database just "db"
+        db_name = "db-light" if db_type == "light" else "db"
+        docker_run = ["docker", "run", "--rm", "-v", f"{download_dir}:/data/download", self.bio_service_image]
+
+        print(f"\nDownloading the {db_type} Bakta database (this can take a long time)...")
+        if self.run_docker(
+            [*docker_run, "bakta_db", "download", "--output", "/data/download", "--type", db_type]
+        ) != 0 and not self.index_amrfinderplus_db(download_dir / db_name):
+            print(f"Failed to download the {db_type} Bakta database")
+            return False
+
+        (download_dir / db_name).rename(target)
+        shutil.rmtree(download_dir, ignore_errors=True)
+        print(f"The {db_type} Bakta database is in {target}")
+        return True
+
+    def index_amrfinderplus_db(self, db_dir: Path) -> bool:
+        """
+        Index again the AMRFinderPlus database inside a downloaded Bakta database.
+
+        The last step of `bakta_db download` updates that database, and on Docker Desktop for Windows
+        its indexing (makeblastdb) fails with an LMDB error unless the folder of the new version is
+        itself the mounted folder. False if the Bakta database was not even downloaded.
+        """
+        amrfinderplus_dir = db_dir / "amrfinderplus-db"
+        if not (db_dir / "version.json").exists() or not amrfinderplus_dir.is_dir():
+            return False
+        # "latest" is a Linux link, which Windows cannot even look at
+        versions = sorted(path for path in amrfinderplus_dir.iterdir() if path.name != "latest" and path.is_dir())
+        if not versions:
+            return False
+        print(f"\nIndexing the AMRFinderPlus database {versions[-1].name} again...")
+        return self.run_docker(
+            ["docker", "run", "--rm", "-v", f"{versions[-1]}:/amrfinderplus-db", self.bio_service_image,
+             "amrfinder_index", "/amrfinderplus-db/"]
+        ) == 0
 
     def run_docker(self, cmd: list[str]) -> int:
         """Execute a Docker command."""
@@ -362,6 +464,7 @@ class DockerDeployer:
 
         else:
             print("\nUsing REAL bio-service")
+            self.check_bakta_db()
 
             if not self.deploy_service(
                 "Bio Service",
@@ -451,6 +554,15 @@ def main():
         ),
     )
 
+    parser.add_argument(
+        "--download-bakta-db",
+        choices=DockerDeployer.BAKTA_DB_TYPES,
+        help=(
+            "Download the light or the full Bakta database "
+            "of the bio service, and do nothing else"
+        ),
+    )
+
     args = parser.parse_args()
 
     if args.prod and (args.mock or args.expose_api):
@@ -461,6 +573,13 @@ def main():
 
     print("Cocos Docker Deployment")
     print("=" * 60)
+
+    # ---------------------------------------------------------
+    # DOWNLOAD THE BAKTA DATABASE
+    # ---------------------------------------------------------
+
+    if args.download_bakta_db:
+        return 0 if deployer.download_bakta_db(args.download_bakta_db) else 1
 
     # ---------------------------------------------------------
     # DOWN
