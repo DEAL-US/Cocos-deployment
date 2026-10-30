@@ -118,7 +118,7 @@ The last step of the download updates the AMRFinderPlus database inside it, and 
 docker run --rm -v ./data/db-light/amrfinderplus-db/<version>:/amrfinderplus-db bio-service-bio-assembly-api amrfinder_index /amrfinderplus-db/
 ```
 
-When it deploys the real bio service, `deploy.py` warns if the database of `BAKTA_DB_TYPE` is missing. The AMRFinderPlus database inside it is updated each time the workers start, so they need internet.
+When it deploys the real bio service, `deploy.py` warns if the database of `BAKTA_DB_TYPE` is missing. Each time a worker starts, it updates the AMRFinderPlus database inside it if there is a new version (`update_amrfinderplus_db.py`), so the workers need internet; if indexing it fails as above, the worker indexes it in a copy inside the container and copies the index back.
 
 ### Configuration
 

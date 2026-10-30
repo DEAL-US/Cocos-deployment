@@ -29,7 +29,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy application files
-COPY --chown=biouser:biouser app.py tasks.py utils.py versions.py gunicorn.conf.py /app/
+COPY --chown=biouser:biouser app.py tasks.py utils.py versions.py update_amrfinderplus_db.py gunicorn.conf.py /app/
 
 # Switch to non-root user
 USER biouser

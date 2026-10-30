@@ -71,10 +71,10 @@ services:
       - CELERY_MAIN_QUEUE=default
       - CELERY_MAINTENANCE_QUEUE=maintenance
       - STALE_JOB_CLEANUP_INTERVAL_SECONDS=300
-    # You can delete --force-update for the amrfinder_update command after the first run once the database is updated
+    # Before starting, the AMRFinderPlus database is updated if there is a new version (see update_amrfinderplus_db.py)
     # -E enables Celery events which are needed for monitoring with Flower. You can remove it if you don't plan to use Flower or other monitoring tools that rely on Celery events.
     command: ["conda", "run", "--no-capture-output", "-n", "bio_env", "sh", "-c",
-      "amrfinder_update --force_update --database /data/bakta_db/amrfinderplus-db/ || echo 'amrfinder_update failed, continuing' ; celery -A tasks worker --loglevel=info --queues=$$CELERY_MAIN_QUEUE --heartbeat-interval=10 -E"]
+      "python update_amrfinderplus_db.py || echo 'Updating the AMRFinderPlus database failed, continuing' ; celery -A tasks worker --loglevel=info --queues=$$CELERY_MAIN_QUEUE --heartbeat-interval=10 -E"]
     restart: unless-stopped
     deploy:
       resources:
