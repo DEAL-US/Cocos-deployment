@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Deploy Cocos application with Docker Compose.
-Manages bio-service, mock bio-service, and web service stacks.
+Manages bio-service, mock bio-service, model service and web service stacks.
 
 Usage:
     python deploy.py [--no-build] [--mock] [--expose-api] [--prod] [--down]
@@ -11,6 +11,7 @@ Options:
     --no-build    Skip rebuilding images
     --mock        Use the mock bio-service instead of the real bio-service
     --expose-api  Also publish the real bio-service API on localhost:8000 (e.g. for test.http)
+                  and the model service API on localhost:8002
     --prod        Deploy the production stack of Cocos instead of the development one
     --down        Stop and remove all Cocos containers
     --download-bakta-db
@@ -32,6 +33,7 @@ class DockerDeployer:
 
     BIO_SERVICE_PROJECT = "bio-service"
     MOCK_BIO_SERVICE_PROJECT = "mock-bio-service"
+    MODEL_SERVICE_PROJECT = "model-service"
     WEB_SERVICE_PROJECT = "cocos-dev"
     PROD_WEB_SERVICE_PROJECT = "cocos-prod"
 
@@ -59,6 +61,8 @@ class DockerDeployer:
             / "mock-bio-service"
         )
 
+        self.model_service_dir = self.project_root / "model-service"
+
     def validate_setup(self, mock: bool = False, prod: bool = False) -> bool:
         """Validate project structure and prerequisites."""
         print("Validating setup...")
@@ -69,6 +73,7 @@ class DockerDeployer:
 
         dirs = {
             "Web Service": self.web_service_dir,
+            "Model Service": self.model_service_dir,
         }
 
         if mock:
@@ -390,6 +395,11 @@ class DockerDeployer:
                 / "docker-compose.yml",
             ),
             (
+                self.MODEL_SERVICE_PROJECT,
+                self.model_service_dir
+                / "docker-compose.yml",
+            ),
+            (
                 self.WEB_SERVICE_PROJECT,
                 self.web_service_dir
                 / "docker-compose.yml",
@@ -422,8 +432,8 @@ class DockerDeployer:
         prod: bool = False,
     ) -> bool:
         """
-        Deploy Cocos services. With expose_api, the real bio-service API is also published on
-        localhost; with prod, the production stack of Cocos is deployed instead of the development one.
+        Deploy Cocos services. With expose_api, the APIs of the real bio-service and of the model
+        service are also published on localhost; with prod, the production stack of Cocos is deployed instead of the development one.
         """
 
         if not self.validate_setup(mock=mock, prod=prod):
@@ -480,6 +490,22 @@ class DockerDeployer:
                 return False
 
         # -----------------------------------------------------
+        # Deploy model service (the same with the mock: its tools are light)
+        # -----------------------------------------------------
+
+        if not self.deploy_service(
+            "Model Service",
+            self.model_service_dir / "docker-compose.yml",
+            self.MODEL_SERVICE_PROJECT,
+            build=build,
+            override_files=(
+                (self.model_service_dir / "docker-compose.dev.yml",)
+                if expose_api else ()
+            ),
+        ):
+            return False
+
+        # -----------------------------------------------------
         # Deploy web service
         # -----------------------------------------------------
 
@@ -533,7 +559,8 @@ def main():
         action="store_true",
         help=(
             "Also publish the real bio-service API on "
-            "localhost:8000 (e.g. for test.http)"
+            "localhost:8000 (e.g. for test.http) and the "
+            "model service API on localhost:8002"
         ),
     )
 
@@ -633,6 +660,17 @@ def main():
             print(
                 "  • Bio Service API: "
                 "only inside the network (http://bio-assembly-api:8000)"
+            )
+
+        if args.expose_api:
+            print(
+                "  • Model Service API: "
+                "http://localhost:8002 (only from this machine)"
+            )
+        else:
+            print(
+                "  • Model Service API: "
+                "only inside the network (http://model-api:8000)"
             )
 
         print(
