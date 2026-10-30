@@ -2,18 +2,18 @@
 
 Deployment of [Cocos](https://github.com/DEAL-US/Cocos) together with the bio service that runs its assembly and annotation jobs, and a mock of that service for development.
 
-| Folder or file                              | What                                                                                       |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `cocos/`                                    | Cocos, as a Git submodule                                                                  |
-| `docker-servicios-bio/docker-servicios-bio/` | The bio service: an HTTP API with Celery workers that assemble reads and annotate assemblies |
-| `mock-bio-service/`                         | A mock of the bio service, which answers at once with example results                      |
-| `deploy.py`                                 | Starts the bio service (or its mock) and the development stack of Cocos                    |
+| Folder or file      | What                                                                                         |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| `cocos/`            | Cocos, as a Git submodule                                                                    |
+| `bio-service/`      | The bio service: an HTTP API with Celery workers that assemble reads and annotate assemblies |
+| `mock-bio-service/` | A mock of the bio service, which answers at once with example results                        |
+| `deploy.py`         | Starts the bio service (or its mock) and the development stack of Cocos                      |
 
 ## Requirements
 
 - Docker, with Docker Compose.
 - Python 3, to run `deploy.py`.
-- For the real bio service, the light Bakta database, version 6 (the one Bakta 1.12 needs), in `docker-servicios-bio/docker-servicios-bio/data/db-light`. Bakta can download it with `bakta_db download --output data --type light`, from that folder (see the [Bakta documentation](https://github.com/oschwengers/bakta#database)). The AMRFinderPlus database inside it is updated each time the workers start, so they need internet.
+- For the real bio service, the light Bakta database, version 6 (the one Bakta 1.12 needs), in `bio-service/data/db-light`. Bakta can download it with `bakta_db download --output data --type light`, from that folder (see the [Bakta documentation](https://github.com/oschwengers/bakta#database)). The AMRFinderPlus database inside it is updated each time the workers start, so they need internet.
 
 Clone the repository with its submodule:
 

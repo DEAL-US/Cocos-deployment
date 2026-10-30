@@ -6,6 +6,6 @@ error.txt
 bakta50.npz
 ATCC25922.json
 pesos-modelos
-docker-servicios-bio/docker-servicios-bio/data
-docker-servicios-bio/docker-servicios-bio/test-data
+bio-service/data
+bio-service/test-data
 memoria

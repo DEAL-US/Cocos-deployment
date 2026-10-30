@@ -1,3 +1,6 @@
+# The same project name as deploy.py, also when this file is used on its own
+name: bio-service
+
 services:
   redis:
     image: redis:8-alpine

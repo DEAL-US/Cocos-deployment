@@ -34,11 +34,7 @@ class DockerDeployer:
     def __init__(self, project_root: Path):
         self.project_root = Path(project_root)
 
-        self.bio_service_dir = (
-            self.project_root
-            / "docker-servicios-bio"
-            / "docker-servicios-bio"
-        )
+        self.bio_service_dir = self.project_root / "bio-service"
 
         self.web_service_dir = (
             self.project_root

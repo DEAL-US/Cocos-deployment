@@ -1,4 +1,4 @@
-# The software the real service reports (docker-servicios-bio/versions.py), with the versions it pins
+# The software the real service reports (bio-service/versions.py), with the versions it pins
 ASSEMBLERS = {
     "illumina": {"spades": [{"name": "SPAdes", "version": "4.3.0", "type": "tool", "biotools": "spades"}]},
     "ont": {
