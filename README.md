@@ -174,7 +174,7 @@ model-service/tools/<name>/
 
 `tools/amrfinderplus/` runs [AMRFinderPlus](https://github.com/ncbi/amr) 4.2.7 on an assembly (`--nucleotide`, with `--organism` when the organism of the sample is one it knows, for its point mutations) and interprets its hits with [AMRrules](https://github.com/AMRverse/AMRrules) v1.0.1, expert rules for each organism (e.g. *blaEC* in *E. coli* is wildtype, so susceptible to cefotaxime), for the organisms it has rules for. A hit no rule interprets gives what AMRFinderPlus says of its subclass, as an ARO term through the table of AMRrules: `R` for an antibiotic, `possible` for a class. Every antibiotic or class of that table with no result is `not_detected`.
 
-The AMRFinderPlus database is downloaded into the image when it is built, so its version is fixed with the image (rebuild the image to update it), together with the gene hierarchy of that same version, which AMRrules needs. AMRrules also downloads two files of [CARD](https://card.mcmaster.ca) when the image is built: its ontology (`aro.obo`, CC BY 4.0) and `aro_categories.tsv`, from the data of CARD, whose terms allow academic use.
+The AMRFinderPlus database is downloaded into the image when it is built, so its version is fixed with the image (rebuild the image to update it), together with the gene hierarchy of that same version, which AMRrules needs. AMRrules also downloads two files of [CARD](https://card.mcmaster.ca) when the image is built: its ontology (`aro.obo`, CC BY 4.0) and `aro_categories.tsv`, from the data of CARD, whose terms allow academic, government and non-profit use; commercial use of the data of CARD needs a license from McMaster University (see [License](#license)).
 
 ### Configuration of the model service
 
@@ -214,3 +214,5 @@ The mock has the same API as the bio service and answers at once with example re
 ## License
 
 Free software under the [GNU General Public License v3](LICENSE).
+
+The services run third-party tools (Bakta, SPAdes, Raven, Flye, AMRFinderPlus, AMRrules) as separate programs, each under its own license. The image of the model service includes data of [CARD](https://card.mcmaster.ca), which is not covered by this license: its ontology is under CC BY 4.0, and its other data is free for academic, government and non-profit use only, under the [terms of CARD](https://card.mcmaster.ca/about). Commercial use needs a license from McMaster University.
