@@ -4,6 +4,11 @@ import pytest
 from results import check_results
 
 
+def test_every_call_is_valid():
+    calls = ["R", "I", "S", "possible", "not_detected"]
+    assert check_results([{"about": "ARO:0000020", "call": call} for call in calls]) ==         [{"about": "ARO:0000020", "call": call} for call in calls]
+
+
 def test_keeps_valid_results_and_drops_empty_fields():
     assert check_results([{"about": "ARO:0000020", "call": "not_detected", "evidence": []},
                           {"about": "ARO:0000013", "score": 0}]) == [

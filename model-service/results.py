@@ -4,14 +4,16 @@ The result of a prediction, the same for every tool (and as Cocos stores it, in 
 A job gives a list of results, one for each thing the tool says something about:
 
     {"about": "ARO:0000020",           # an ARO term: an antibiotic, or a class of antibiotics
-     "call": "R",                      # a verdict: R, S or not_detected (optional)
+     "call": "R",                      # a verdict: one of CALLS (optional)
      "score": 0.83,                    # the probability of resistance, from 0 to 1 (optional)
      "evidence": [{...}, ...]}         # what the verdict rests on, e.g. the genes found (optional)
 
-A result has a call, a score or both. "not_detected" means that the tool found no known
-determinant, which is not the same as susceptible.
+A result has a call, a score or both. The calls are R (resistant), I (susceptible, increased
+exposure) and S (susceptible), as clinical categories; "possible" (a determinant of a class of
+antibiotics was found, which does not always make a strain resistant to all of them); and
+"not_detected" (no known determinant was found, which is not the same as susceptible).
 """
-CALLS = ("R", "S", "not_detected")
+CALLS = ("R", "I", "S", "possible", "not_detected")
 
 
 def check_results(results):
