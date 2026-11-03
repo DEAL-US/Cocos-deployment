@@ -1,13 +1,14 @@
 # Cocos-deployment
 
-Deployment of [Cocos](https://github.com/DEAL-US/Cocos) together with the bio service that runs its assembly and annotation jobs, and a mock of that service for development.
+Deployment of [Cocos](https://github.com/DEAL-US/Cocos) together with the bio service that runs its assembly and annotation jobs, a mock of that service for development, and the model service that runs the prediction models that do not run in Cocos itself.
 
 | Folder or file      | What                                                                                         |
 | ------------------- | -------------------------------------------------------------------------------------------- |
 | `cocos/`            | Cocos, as a Git submodule                                                                    |
 | `bio-service/`      | The bio service: an HTTP API with Celery workers that assemble reads and annotate assemblies |
 | `mock-bio-service/` | A mock of the bio service, which answers at once with example results                        |
-| `deploy.py`         | Starts the bio service (or its mock) and the development stack of Cocos                      |
+| `model-service/`    | The model service: an HTTP API with Celery workers that run prediction tools, e.g. AMRFinderPlus |
+| `deploy.py`         | Starts the bio service (or its mock), the model service and the development stack of Cocos   |
 
 ## Requirements
 
@@ -37,12 +38,12 @@ From the root of the repository:
 | -------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `python deploy.py --mock`                    | The mock of the bio service and the development stack of Cocos, without the Bakta database |
 | `python deploy.py`                           | The real bio service and the development stack of Cocos                                    |
-| `python deploy.py --expose-api`              | The same, also publishing the API of the bio service on `127.0.0.1:8000`                   |
+| `python deploy.py --expose-api`              | The same, also publishing the APIs of the bio service on `127.0.0.1:8000` and of the model service on `127.0.0.1:8002` |
 | `python deploy.py --prod`                    | The real bio service and the production stack of Cocos                                     |
 | `python deploy.py --down`                    | Nothing: stops and removes every container                                                 |
 | `python deploy.py --download-bakta-db light` | Nothing: downloads the light (or `full`) Bakta database of the bio service                 |
 
-`--no-build` skips rebuilding the images. `deploy.py` creates the Docker network `cocos-network`, which the stacks share, if it does not exist, and stops the bio service or the mock that is not used.
+`--no-build` skips rebuilding the images. `deploy.py` creates the Docker network `cocos-network`, which the stacks share, if it does not exist, and stops the bio service or the mock that is not used. The model service always runs, also with `--mock`: its tools are light, so it has no mock.
 
 The development stack of Cocos is described in its [development guide](https://github.com/DEAL-US/Cocos/blob/main/docs/development.md), and the production one in its [production guide](https://github.com/DEAL-US/Cocos/blob/main/docs/production.md). Before deploying for production, `--prod` runs the setup script of Cocos on `cocos/.env.prod`: it creates the file if needed, generates its secrets and stops if a required value is still missing (such as the domain).
 
@@ -51,6 +52,7 @@ The development stack of Cocos is described in its [development guide](https://g
 | Cocos               | `http://localhost:8080` (development) or `http://localhost`, port 80, or its domain (production) |
 | Mock of the service | `http://localhost:8001`, only from this machine            |
 | Bio service         | `http://bio-assembly-api:8000`, only inside `cocos-network` (and `127.0.0.1:8000` with `--expose-api`) |
+| Model service       | `http://model-api:8000`, only inside `cocos-network` (and `127.0.0.1:8002` with `--expose-api`) |
 
 ## Bio Service
 
@@ -140,6 +142,59 @@ When it deploys the real bio service, `deploy.py` warns if the database of `BAKT
 | `REDIS_URL`                                            | `redis://bio-redis:6379/0` | Redis of the service                                            |
 
 The `DEFAULT_*` values apply when a request does not give them. The time limits of the jobs are not in the compose file and have defaults in the code: `ASSEMBLY_SOFT_TIMEOUT` and `ASSEMBLY_HARD_TIMEOUT` (72,000 and 75,000 seconds), and `ANNOTATION_SOFT_TIMEOUT` and `ANNOTATION_HARD_TIMEOUT` (36,000 and 39,000 seconds).
+
+## Model Service
+
+The model service runs the prediction models that do not run in Cocos itself, each tool in its own conda environment, so that tools with conflicting dependencies live in the same image (`model-service/`, a Docker Compose project of its own, with its own Redis). Its jobs work like those of the bio service, so that each model could later move to a container of its own without changes in Cocos:
+
+| Endpoint                | What                                                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `GET /models`           | The tools there are, the inputs they need and the versions of their software and databases                   |
+| `POST /predict/<model>` | One file per input, named after its role (e.g. `assembly`), and optionally the `organism` (an NCBITaxon CURIE): starts a job |
+| `GET /jobs/<id>`        | Its status (`pending`, `running`, `completed` or `failed`), why it failed (`message`, and `error_kind`: `input` if running it again would fail too) and the software it used |
+| `GET /jobs/<id>/result` | Its results, the same for every tool (`results.py`): for each ARO term (an antibiotic or a class of antibiotics), a verdict (`R`, `I`, `S`, `possible` or `not_detected`), a probability or both, and the evidence behind it |
+| `GET /jobs/<id>/raw`    | The output of the tool itself                                                                                |
+
+It answers 503 when it has too many active jobs (`MAX_ACTIVE_JOBS`). In Cocos, each of its models is a folder with only its descriptor, which says where its jobs go (see [Extending Cocos](https://github.com/DEAL-US/Cocos/blob/main/docs/extending.md#add-models-that-run-in-the-model-service)).
+
+### Add a tool
+
+A tool is a folder of `model-service/tools/`, named as the model it runs:
+
+```
+model-service/tools/<name>/
+├── environment.yml   # its conda environment: the tool and its dependencies, with pinned versions
+├── setup.sh          # optional: runs once in that environment when the image is built (e.g. to download its database)
+└── tool.py           # INPUTS, run() and software()
+```
+
+`tool.py` defines `INPUTS`, the roles of the files it needs (e.g. `("assembly",)`); `run(inputs, organism, workdir)`, which runs the tool (with `registry.run_in_env`, in the environment `tool_<name>`) and returns its results and the path of its own output; and `software()`, the versions of what it uses. It raises `registry.InputError` when it fails because of its input. The image builds the environment of a tool, and runs its `setup.sh`, only when one of those two files changes. See `tools/amrfinderplus/` for a complete example.
+
+### AMRFinderPlus
+
+`tools/amrfinderplus/` runs [AMRFinderPlus](https://github.com/ncbi/amr) 4.2.7 on an assembly (`--nucleotide`, with `--organism` when the organism of the sample is one it knows, for its point mutations) and interprets its hits with [AMRrules](https://github.com/AMRverse/AMRrules) v1.0.1, expert rules for each organism (e.g. *blaEC* in *E. coli* is wildtype, so susceptible to cefotaxime), for the organisms it has rules for. A hit no rule interprets gives what AMRFinderPlus says of its subclass, as an ARO term through the table of AMRrules: `R` for an antibiotic, `possible` for a class. Every antibiotic or class of that table with no result is `not_detected`.
+
+The AMRFinderPlus database is downloaded into the image when it is built, so its version is fixed with the image (rebuild the image to update it), together with the gene hierarchy of that same version, which AMRrules needs. AMRrules also downloads two files of [CARD](https://card.mcmaster.ca) when the image is built: its ontology (`aro.obo`, CC BY 4.0) and `aro_categories.tsv`, from the data of CARD, whose terms allow academic use.
+
+### Configuration of the model service
+
+| Variable                  | Default                      | What                                                |
+| ------------------------- | ---------------------------- | --------------------------------------------------- |
+| `MAX_ACTIVE_JOBS`         | `20`                         | Pending or running jobs before it answers 503       |
+| `PREDICTION_SOFT_TIMEOUT` | `3600`                       | Seconds a job may run before it fails (`resources`) |
+| `PREDICTION_HARD_TIMEOUT` | `3900`                       | Seconds after which its worker kills it             |
+| `AMRFINDERPLUS_THREADS`   | `4`                          | Threads of AMRFinderPlus                            |
+| `REDIS_URL`               | `redis://model-redis:6379/0` | Redis of the service                                |
+
+### Tests
+
+The tests run in the image of the service, with fake tools and an in-memory Redis (those of AMRFinderPlus use its real outputs on *E. coli* ATCC 25922):
+
+```bash
+cd model-service
+docker compose build model-api
+docker run --rm -u root -v "$PWD:/src" -w /src model-service-model-api sh -c "pip install -r requirements-dev.txt && python -m pytest"
+```
 
 ## Mock of the Bio Service
 
