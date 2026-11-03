@@ -1,0 +1,11 @@
+# AMRFinderPlus (NCBI), and AMRrules (AMRverse) to interpret its hits for each organism.
+# Versions are pinned: the jobs report them (see tool.py). AMRrules is installed by setup.sh.
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.12
+  - ncbi-amrfinderplus=4.2.7
+  - obonet=1.1.1   # the only dependency of AMRrules, which setup.sh installs from its repository
+  - git
+  - pip

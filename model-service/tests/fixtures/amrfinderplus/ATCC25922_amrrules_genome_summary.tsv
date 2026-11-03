@@ -1,0 +1,21 @@
+sample	drug	drug class	clinical category	phenotype	evidence grade	markers (non-S)	markers (no rule)	markers (S)	ruleIDs	combo rules	organism
+sample	(all)	carbapenem	S	wildtype	high	-	-	blaEC-5	ECO0016	-	s__Escherichia coli
+sample	imipenem	carbapenem	S	wildtype	high	-	-	blaEC-5	ECO0016;ECO0017	-	s__Escherichia coli
+sample	(all)	first-generation cephalosporin	S	wildtype	high	-	-	blaEC-5	ECO0005	-	s__Escherichia coli
+sample	cefazolin	first-generation cephalosporin	I	wildtype	high	blaEC-5	-	blaEC-5	ECO0005;ECO0006	-	s__Escherichia coli
+sample	cefepime	fourth-generation cephalosporin	S	wildtype	high	-	-	blaEC-5	ECO0084	-	s__Escherichia coli
+sample	cefpirome	fourth-generation cephalosporin	S	wildtype	high	-	-	blaEC-5	ECO0085	-	s__Escherichia coli
+sample	aztreonam	monobactam	S	wildtype	high	-	-	blaEC-5	ECO0018	-	s__Escherichia coli
+sample	(all)	penicillin beta-lactam	S	wildtype	high	-	-	blaEC-5	ECO0001	-	s__Escherichia coli
+sample	amoxicillin	penicillin beta-lactam	S	wildtype	high	-	-	blaEC-5	ECO0001;ECO0003	-	s__Escherichia coli
+sample	ampicillin	penicillin beta-lactam	S	wildtype	high	-	-	blaEC-5	ECO0001;ECO0002	-	s__Escherichia coli
+sample	piperacillin	penicillin beta-lactam	S	wildtype	high	-	-	blaEC-5	ECO0001;ECO0004	-	s__Escherichia coli
+sample	(all)	second-generation cephalosporin	S	wildtype	high	-	-	blaEC-5	ECO0007	-	s__Escherichia coli
+sample	cefoxitin	second-generation cephalosporin	S	wildtype	high	-	-	blaEC-5	ECO0007;ECO0008	-	s__Escherichia coli
+sample	cefuroxime	second-generation cephalosporin	S	wildtype	high	-	-	blaEC-5	ECO0007;ECO0009	-	s__Escherichia coli
+sample	(all)	third-generation cephalosporin	S	wildtype	high	-	-	blaEC-5	ECO0012	-	s__Escherichia coli
+sample	cefixime	third-generation cephalosporin	S	wildtype	high	-	-	blaEC-5	ECO0012;ECO0015	-	s__Escherichia coli
+sample	cefotaxime	third-generation cephalosporin	S	wildtype	high	-	-	blaEC-5	ECO0011;ECO0012	-	s__Escherichia coli
+sample	ceftazidime	third-generation cephalosporin	S	wildtype	high	-	-	blaEC-5	ECO0012;ECO0014	-	s__Escherichia coli
+sample	ceftriaxone	third-generation cephalosporin	S	wildtype	high	-	-	blaEC-5	ECO0012;ECO0013	-	s__Escherichia coli
+sample	(n/a)	antibiotic efflux	-	-	none	-	mdtM;emrD;acrF	-	-	-	s__Escherichia coli
